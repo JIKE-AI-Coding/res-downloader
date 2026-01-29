@@ -42,6 +42,7 @@
     "import_success": "Export Success",
     "total_resources": "total of {count} resources",
     "all": "All",
+    "all_platforms": "All Platforms",
     "image": "Image",
     "audio": "Audio",
     "video": "Video",

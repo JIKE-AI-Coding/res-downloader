@@ -1,17 +1,18 @@
 <template>
   <div class="h-full flex flex-col px-5 pt-5 overflow-y-auto [&::-webkit-scrollbar]:hidden">
     <div class="pb-2 z-40" id="header">
-      <NSpace>
-        <NButton v-if="isProxy" secondary type="primary" @click.stop="close" style="--wails-draggable:no-drag">
-          <span class="inline-block w-1.5 h-1.5 bg-red-600 rounded-full mr-1 animate-pulse"></span>
-          {{ t("index.close_grab") }}{{ data.length > 0 ? `&nbsp;${t('index.total_resources', {count: data.length})}` : '' }}
-        </NButton>
-        <NButton v-else tertiary type="tertiary" @click.stop="open" style="--wails-draggable:no-drag">
-          {{ t("index.open_grab") }}{{ data.length > 0 ? `&nbsp;${t('index.total_resources', {count: data.length})}` : '' }}
-        </NButton>
-        <NSelect style="min-width: 100px;--wails-draggable:no-drag" :placeholder="t('index.grab_type')" v-model:value="resourcesType" multiple clearable
-                 :max-tag-count="3" :options="classify"></NSelect>
-        <NButtonGroup style="--wails-draggable:no-drag">
+      <NSpace vertical :size="12">
+        <NSpace>
+          <NButton v-if="isProxy" secondary type="primary" @click.stop="close" style="--wails-draggable:no-drag">
+            <span class="inline-block w-1.5 h-1.5 bg-red-600 rounded-full mr-1 animate-pulse"></span>
+            {{ t("index.close_grab") }}{{ data.length > 0 ? `&nbsp;${t('index.total_resources', {count: data.length})}` : '' }}
+          </NButton>
+          <NButton v-else tertiary type="tertiary" @click.stop="open" style="--wails-draggable:no-drag">
+            {{ t("index.open_grab") }}{{ data.length > 0 ? `&nbsp;${t('index.total_resources', {count: data.length})}` : '' }}
+          </NButton>
+          <NSelect style="min-width: 100px;--wails-draggable:no-drag" :placeholder="t('index.grab_type')" v-model:value="resourcesType" multiple clearable
+                   :max-tag-count="3" :options="classify"></NSelect>
+          <NButtonGroup style="--wails-draggable:no-drag">
 
           <NButton v-if="rememberChoice" tertiary type="error" @click.stop="clear" style="--wails-draggable:no-drag">
             <template #icon>
@@ -104,6 +105,17 @@
           </NButton>
         </NButtonGroup>
       </NSpace>
+        <NTabs v-if="platformTabs.length > 1" v-model:value="activePlatform" type="card" animated size="small" style="--wails-draggable:no-drag">
+          <NTabPane v-for="tab in platformTabs" :key="tab.key" :name="tab.key">
+            <template #tab>
+              <NSpace align="center" :size="4">
+                <span>{{ tab.label }}</span>
+                <NTag size="small" :bordered="false">{{ tab.count }}</NTag>
+              </NSpace>
+            </template>
+          </NTabPane>
+        </NTabs>
+      </NSpace>
     </div>
     <div class="flex-1">
       <NDataTable
@@ -135,7 +147,7 @@
 </template>
 
 <script lang="ts" setup>
-import {NButton, NIcon, NImage, NInput, NSpace, NTooltip, NPopover, NGradientText} from "naive-ui"
+import {NButton, NIcon, NImage, NInput, NSpace, NTooltip, NPopover, NGradientText, NTabs, NTabPane, NTag} from "naive-ui"
 import {computed, h, onMounted, ref, watch} from "vue"
 import type {appType} from "@/types/app"
 import type {DataTableRowKey, ImageRenderToolbarProps, DataTableFilterState, DataTableBaseColumn} from "naive-ui"
@@ -161,6 +173,7 @@ import {
   Apps,
   TrashOutline, CloseOutline
 } from "@vicons/ionicons5"
+import {getPlatformInfo, getCategoryName} from "@/constants/platforms"
 import {useDialog} from 'naive-ui'
 import * as bind from "../../wailsjs/go/core/Bind"
 import {Quit} from "../../wailsjs/runtime"
@@ -177,9 +190,19 @@ const certUrl = computed(() => {
   return store.baseUrl + "/api/cert"
 })
 const data = ref<any[]>([])
+const activePlatform = ref<string>('all')
+const platformTabs = ref<Array<{key: string; label: string; count: number}>>([])
 const filterClassify = ref<string[]>([])
 const filteredData = computed(() => {
   let result = data.value
+
+  // Filter by platform
+  if (activePlatform.value !== 'all') {
+    result = result.filter(item => {
+      const platformInfo = getPlatformInfo(item.Domain)
+      return platformInfo.category === activePlatform.value
+    })
+  }
 
   if (filterClassify.value.length > 0) {
     result = result.filter(item => filterClassify.value.includes(item.Classify))
@@ -278,13 +301,14 @@ const columns = ref<any[]>([
     key: "Domain",
     width: 90,
     render: (row: appType.MediaInfo) => {
+      const platformInfo = getPlatformInfo(row.Domain)
       return h(NTooltip, {
         trigger: 'hover',
         placement: 'top'
       }, {
         trigger: () => h('span', {
           class: 'cursor-default'
-        }, row.Domain),
+        }, `${platformInfo.icon} ${platformInfo.name}`),
         default: () => row.Url
       })
     }
@@ -512,6 +536,9 @@ onMounted(() => {
     data.value = JSON.parse(cache)
   }
 
+  // Build platform tabs after data is loaded
+  buildPlatformTabs()
+
   const choiceCache = localStorage.getItem("remember-clear-choice")
   if (choiceCache === "1") {
     rememberChoice.value = true
@@ -587,6 +614,11 @@ watch(resourcesType, (n, o) => {
   appApi.setType(resourcesType.value)
 })
 
+// Watch data changes to update platform tabs
+watch(() => data.value, () => {
+  buildPlatformTabs()
+}, { deep: true })
+
 const updateItem = (id: string, updater: (item: any) => void) => {
   const item = data.value.find(i => i.Id === id)
   if (item) updater(item)
@@ -625,6 +657,33 @@ const buildClassify = () => {
           label: classifyAlias[Type] ?? Type,
         })),
   ]
+}
+
+const buildPlatformTabs = () => {
+  const locale = store.globalConfig.Locale ?? 'zh'
+  const stats = new Map<string, number>()
+
+  data.value.forEach(item => {
+    const platformInfo = getPlatformInfo(item.Domain)
+    const category = platformInfo.category
+    stats.set(category, (stats.get(category) || 0) + 1)
+  })
+
+  platformTabs.value = [
+    {key: 'all', label: t('index.all_platforms'), count: data.value.length},
+    ...Array.from(stats.entries())
+      .map(([category, count]) => ({
+        key: category,
+        label: getCategoryName(category, locale),
+        count
+      }))
+      .sort((a, b) => b.count - a.count)
+  ]
+
+  // Reset activePlatform if it's no longer valid
+  if (!platformTabs.value.find(tab => tab.key === activePlatform.value)) {
+    activePlatform.value = 'all'
+  }
 }
 
 const dataAction = (row: appType.MediaInfo, index: number, type: string) => {
