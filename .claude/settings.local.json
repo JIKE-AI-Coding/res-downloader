@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test:*)",
+      "Bash(wails build:*)",
+      "Bash(wails dev:*)"
+    ]
+  }
+}

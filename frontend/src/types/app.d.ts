@@ -41,6 +41,7 @@ export namespace appType {
         CoverUrl: string
         Size: number
         Domain: string
+        PlatformName?: string
         Classify: string
         Suffix: string
         SavePath: string

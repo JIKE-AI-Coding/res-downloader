@@ -56,20 +56,21 @@ func (p *DefaultPlugin) OnResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *
 			id = urlSign
 		}
 		res := shared.MediaInfo{
-			Id:          id,
-			Url:         rawUrl,
-			UrlSign:     urlSign,
-			CoverUrl:    "",
-			Size:        value,
-			Domain:      shared.GetTopLevelDomain(rawUrl),
-			Classify:    classify,
-			Suffix:      suffix,
-			Status:      shared.DownloadStatusReady,
-			SavePath:    "",
-			DecodeKey:   "",
-			OtherData:   map[string]string{},
-			Description: "",
-			ContentType: resp.Header.Get("Content-Type"),
+			Id:           id,
+			Url:          rawUrl,
+			UrlSign:      urlSign,
+			CoverUrl:     "",
+			Size:         value,
+			Domain:       shared.GetTopLevelDomain(rawUrl),
+			PlatformName: shared.GetPlatformNameFromURL(rawUrl),
+			Classify:     classify,
+			Suffix:       suffix,
+			Status:       shared.DownloadStatusReady,
+			SavePath:     "",
+			DecodeKey:    "",
+			OtherData:    map[string]string{},
+			Description:  "",
+			ContentType:  resp.Header.Get("Content-Type"),
 		}
 
 		// Store entire request headers as JSON

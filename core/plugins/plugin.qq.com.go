@@ -162,20 +162,21 @@ func (p *QqPlugin) handleMedia(body []byte) {
 	}
 
 	res := shared.MediaInfo{
-		Id:          id,
-		Url:         rawUrl,
-		UrlSign:     urlSign,
-		CoverUrl:    "",
-		Size:        0,
-		Domain:      shared.GetTopLevelDomain(rawUrl),
-		Classify:    "video",
-		Suffix:      ".mp4",
-		Status:      shared.DownloadStatusReady,
-		SavePath:    "",
-		DecodeKey:   "",
-		OtherData:   map[string]string{},
-		Description: "",
-		ContentType: "video/mp4",
+		Id:           id,
+		Url:          rawUrl,
+		UrlSign:      urlSign,
+		CoverUrl:     "",
+		Size:         0,
+		Domain:       shared.GetTopLevelDomain(rawUrl),
+		PlatformName: shared.GetPlatformNameFromURL(rawUrl),
+		Classify:     "video",
+		Suffix:       ".mp4",
+		Status:       shared.DownloadStatusReady,
+		SavePath:     "",
+		DecodeKey:    "",
+		OtherData:    map[string]string{},
+		Description:  "",
+		ContentType:  "video/mp4",
 	}
 
 	if mediaType, ok := firstMedia["mediaType"].(float64); ok && mediaType == 9 {

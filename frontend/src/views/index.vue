@@ -190,7 +190,22 @@ const filteredData = computed(() => {
   }
 
   if (urlSearchValue.value) {
-    result = result.filter(item => item.Url?.toLowerCase().includes(urlSearchValue.value.toLowerCase()))
+    const searchLower = urlSearchValue.value.toLowerCase()
+    result = result.filter(item => {
+      // Support Chinese platform name search
+      if (item.PlatformName?.toLowerCase().includes(searchLower)) {
+        return true
+      }
+      // Support original domain search
+      if (item.Domain?.toLowerCase().includes(searchLower)) {
+        return true
+      }
+      // Support URL search
+      if (item.Url?.toLowerCase().includes(searchLower)) {
+        return true
+      }
+      return false
+    })
   }
 
   return result
@@ -278,14 +293,24 @@ const columns = ref<any[]>([
     key: "Domain",
     width: 90,
     render: (row: appType.MediaInfo) => {
+      // Prioritize platform name display, fallback to domain
+      const displayText = row.PlatformName || row.Domain
+
       return h(NTooltip, {
         trigger: 'hover',
         placement: 'top'
       }, {
         trigger: () => h('span', {
           class: 'cursor-default'
-        }, row.Domain),
-        default: () => row.Url
+        }, displayText),
+        default: () => {
+          // Show detailed information on hover
+          return h('div', {class: 'text-sm'}, [
+            h('div', {}, `平台名称：${row.PlatformName || '未知'}`),
+            h('div', {}, `原始域名：${row.Domain}`),
+            h('div', {class: 'mt-1 text-xs opacity-70'}, row.Url)
+          ])
+        }
       })
     }
   },
